@@ -7,9 +7,9 @@
 
 ```json
 {
-  "name": "Pojok Code",
-  "email": "pojokcode@gmail.com",
-  "password": "pojokcode"
+  "name": "Triananda Fajar Ramadhan",
+  "email": "triananda@gmail.com",
+  "password": "p@ssw0rd"
 }
 ```
 
@@ -22,7 +22,7 @@
   "data": [
     {
       "id": "xxxxxxxxxxxxxxxxxxxxxxxxx",
-      "name": "Pojok Code",
+      "name": "Triananda Fajar Ramadhan",
       "email": "pojokcode@gmail.com"
     }
   ]
