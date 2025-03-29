@@ -8,8 +8,8 @@
 
 ```json
 {
-  "firstName": "Pojok",
-  "lastName": "Code",
+  "firstName": "Triananda",
+  "lastName": "Fajar Ramadhan",
   "email": "email1@kontak.com",
   "phone": "123456789",
   "address": [
