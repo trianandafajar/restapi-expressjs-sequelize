@@ -6,79 +6,94 @@ import { isExists } from "../validation/sanitization.js";
 
 const setContact = async (req, res, next) => {
   const t = await sequelize.transaction();
+
   try {
     let lstError = [];
-    // dapatkan data dari post
     let contact = req.body;
-    let address = [];
+    let addresses = [];
+
+    // Ambil Addresses jika ada
     if (isExists(contact.Addresses)) {
-      address = contact.Addresses;
+      addresses = contact.Addresses;
     }
     delete contact.Addresses;
-    // rule validasi contact
-    const validContact = {
-      firstName: "required",
-    };
-    contact = await dataValid(validContact, contact);
-    lstError.push(...contact.message);
-    // rule validasi address
-    let dtl = await Promise.all(
-      address.map(async (item) => {
-        const addressClear = await dataValid(
+
+    // Validasi data contact
+    const contactValidation = await dataValid(
+      {
+        firstName: "required",
+      },
+      contact
+    );
+    lstError.push(...contactValidation.message);
+
+    // Validasi masing-masing address
+    const validatedAddresses = await Promise.all(
+      addresses.map(async (item) => {
+        const addressValidation = await dataValid(
           {
-            addressType: "requered",
-            street: "requered",
+            addressType: "required",
+            street: "required",
           },
           item
         );
-        lstError.push(...addressClear.message);
-        return addressClear.data;
+        lstError.push(...addressValidation.message);
+        return addressValidation.data;
       })
     );
 
-    contact = {
-      ...contact.data,
+    // Susun ulang data contact dengan valid
+    const preparedContact = {
+      ...contactValidation.data,
       userId: req.user.userId,
-      Addresses: dtl,
+      Addresses: validatedAddresses,
     };
 
-    // jika ada error kirimkan pesan
+    // Jika ada error validasi
     if (lstError.length > 0) {
       return res.status(400).json({
         errors: lstError,
-        message: "Create Contact field",
-        data: contact,
+        message: "Create Contact failed due to validation errors",
+        data: preparedContact,
       });
     }
 
-    // jika tidak ada error
-    const createContact = await Contact.create(contact, { transaction: t });
-    const createAddress = await Promise.all(
-      contact.Addresses.map(async (item) => {
-        return await Address.create(
+    // Simpan contact dan address ke database
+    const createdContact = await Contact.create(preparedContact, {
+      transaction: t,
+    });
+
+    const createdAddresses = await Promise.all(
+      validatedAddresses.map((item) =>
+        Address.create(
           {
             ...item,
-            contactId: createContact.contactId,
+            contactId: createdContact.contactId,
           },
-          {
-            transaction: t,
-          }
-        );
-      })
+          { transaction: t }
+        )
+      )
     );
-    if (!createContact || !createAddress) {
+
+    // Jika gagal simpan
+    if (!createdContact || !createdAddresses.length) {
       await t.rollback();
       return res.status(400).json({
-        errors: ["Contact not found"],
-        message: "Create Contact field",
-        data: contact,
+        errors: ["Failed to create contact or address"],
+        message: "Create Contact failed",
+        data: preparedContact,
       });
     }
+
+    // Commit transaksi
     await t.commit();
     return res.status(201).json({
       errors: [],
       message: "Contact created successfully",
-      data: { ...createContact.dataValues, address: createAddress },
+      data: {
+        ...createdContact.dataValues,
+        Addresses: createdAddresses,
+      },
     });
   } catch (error) {
     await t.rollback();
